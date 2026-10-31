@@ -1,102 +1,98 @@
-// Signal path: where a web page learns "light" or "dark".
-// Crystalline style: pale faceted low-poly field, three cut gems
-// (amethyst = system, sapphire = browser, emerald = page).
+// Signal path, crystalline (prism) style: the system preference is a white
+// beam, the browser is a glass prism that splits it into the signals a page
+// can read, and repainting by auto-dark, add-ons or filters arrives along a
+// dashed path the page cannot measure.
 #let W = 184mm
-#let H = 100mm
+#let H = 96mm
 
-#let navy = rgb("#13294b")
-#let mute = rgb("#4f6687")
-#let amethyst = rgb("#8b5cf6")
-#let sapphire = rgb("#2563eb")
-#let emerald  = rgb("#10b981")
-#let amber    = rgb("#d97706")
+#let night = rgb("#07080d")
+#let fg    = rgb("#e9edf5")
+#let mute  = rgb("#8a93a6")
+#let glass = rgb("#9fd8ff")
+#let amber = rgb("#ffb454")
 
-#set page(width: W, height: H, margin: 0mm, fill: rgb("#e6f1fa"))
-#set text(font: "Ubuntu", size: 7pt, fill: navy)
+#set page(width: W, height: H, margin: 0mm, fill: night)
+#set text(font: "Ubuntu", weight: 300, size: 7pt, fill: fg)
 
 #let at(x, y, body) = place(top + left, dx: x, dy: y, body)
 #let centered(x, y, w, body) = at(x - w / 2, y, block(width: w, align(center, body)))
-#let caps(s, size: 5pt, fill: mute) = text(size: size, weight: 500, tracking: 0.22em, fill: fill, upper(s))
-#let rnd(i) = calc.fract(calc.sin(i * 12.9898) * 43758.5453)
+#let caps(s, size: 5pt, fill: mute) = text(size: size, weight: 500, tracking: 0.24em, fill: fill, upper(s))
+#let seg(a, b, s) = at(0mm, 0mm, line(start: a, end: b, stroke: s))
 
-// ── faceted field ────────────────────────────────────────────────────────
-#let ice = gradient.linear(rgb("#f4f9fe"), rgb("#d6e8f6"), rgb("#bcd8f0"), angle: 20deg)
-#let cols = 13
-#let rows = 8
-#let pt(c, r) = {
-  let j = if c == 0 or c == cols or r == 0 or r == rows { 0 } else { 1 }
-  (c * W / cols + j * (rnd(c * 31 + r * 7) - 0.5) * 9mm,
-   r * H / rows + j * (rnd(c * 17 + r * 53) - 0.5) * 8mm)
-}
-#for c in range(cols) {
-  for r in range(rows) {
-    let (a, b, cc, d) = (pt(c, r), pt(c + 1, r), pt(c + 1, r + 1), pt(c, r + 1))
-    for (k, tri) in ((a, b, cc), (a, cc, d)).enumerate() {
-      let t = (c + r * 0.6) / (cols + rows * 0.6)
-      let shade = ice.sample(t * 100%).darken(rnd(c * 97 + r * 13 + k * 5) * 7%)
-      at(0mm, 0mm, polygon(fill: shade, stroke: 0.3pt + white.transparentize(30%), ..tri))
-    }
+// Line with a soft glow: wide faint strokes under a crisp core.
+#let glow(a, b, c, w: 0.7pt) = {
+  for (k, t) in ((5, 92%), (3, 84%), (1.8, 65%)) {
+    seg(a, b, (paint: c.transparentize(t), thickness: w * k, cap: "round"))
   }
+  seg(a, b, (paint: c, thickness: w, cap: "round"))
 }
 
-// ── gems ─────────────────────────────────────────────────────────────────
-#let gem(cx, cy, R, c) = {
-  let v(a, r) = (cx + r * calc.cos(a), cy + r * calc.sin(a))
-  let shades = (0%, 28%, 50%, 18%, 38%, 8%)
-  for k in range(6) {
-    let a0 = -90deg + k * 60deg
-    let a1 = a0 + 60deg
-    at(0mm, 0mm, polygon(fill: c.lighten(shades.at(k)), stroke: 0.4pt + white,
-      v(a0, R), v(a1, R), v(a1, R * 0.5), v(a0, R * 0.5)))
-  }
-  at(0mm, 0mm, polygon(fill: c.lighten(62%), stroke: 0.4pt + white,
-    ..range(6).map(k => v(-90deg + k * 60deg, R * 0.5))))
+// ── prism (the browser) ──────────────────────────────────────────────────
+#let apex = (92mm, 20mm)
+#let bl = (73mm, 56mm)
+#let br = (111mm, 56mm)
+#at(0mm, 0mm, polygon(apex, bl, br, stroke: 0.8pt + glass.transparentize(10%),
+  fill: gradient.linear(glass.transparentize(80%), glass.transparentize(94%), angle: 70deg)))
+#seg(apex, (92mm, 56mm), 0.3pt + glass.transparentize(65%))
+#seg((92mm, 44mm), bl, 0.3pt + glass.transparentize(75%))
+#seg((92mm, 44mm), br, 0.3pt + glass.transparentize(75%))
+
+// ── beam in: the one system preference ───────────────────────────────────
+#let src = (40mm, 40mm)
+#let entry = (82.5mm, 40mm)
+#let exit = (102.2mm, 42mm)
+#glow(src, entry, white, w: 0.9pt)
+#seg(entry, exit, 0.6pt + white.transparentize(55%))
+#at(src.at(0) - 2.4mm, src.at(1) - 2.4mm, circle(radius: 2.4mm, fill: white, stroke: 2pt + white.transparentize(75%)))
+
+// ── spectrum out: seven readable signals ─────────────────────────────────
+#let spectrum = ("#ff4d4d", "#ff9f40", "#ffe14d", "#5ce07a", "#4dc3ff", "#5b6cff", "#b067ff").map(rgb)
+#for (i, c) in spectrum.enumerate() {
+  glow(exit, (140mm, 29mm + i * 3.8mm), c, w: 0.6pt)
 }
 
-#let GY = 44mm
-#let R = 12mm
-#let X = (36mm, 96mm, 150mm)
-#gem(X.at(0), GY, R, amethyst)
-#gem(X.at(1), GY, R, sapphire)
-#gem(X.at(2), GY, R, emerald)
-
-// ── flows ────────────────────────────────────────────────────────────────
-#let hw = R * 0.866
-#let tri(x, y, dir, c) = at(0mm, 0mm, polygon(fill: c, stroke: none,
-  (x, y), (x - dir * 2mm, y - 1mm), (x - dir * 2mm, y + 1mm)))
-#let flow(x0, x1, y, dir, c) = {
-  at(0mm, 0mm, line(start: (x0, y), end: (x1, y), stroke: 0.9pt + c))
-  tri(if dir > 0 { x1 } else { x0 }, y, dir, c)
-}
-
-// system -> browser
-#flow(X.at(0) + hw + 2mm, X.at(1) - hw - 2mm, GY, 1, amethyst.darken(10%))
-#centered((X.at(0) + X.at(1)) / 2, GY - 9.6mm, 40mm)[#caps(size: 4.6pt, fill: amethyst.darken(10%))[forwards] \ #text(size: 5.4pt, fill: mute)[appearance · contrast · inversion]]
-
-// browser -> page (what scripts and CSS can read)
-#let m = (X.at(1) + X.at(2)) / 2
-#flow(X.at(1) + hw + 2mm, X.at(2) - hw - 2mm, GY - 3.6mm, 1, sapphire)
-#centered(m, GY - 12.4mm, 36mm)[#caps(size: 4.6pt, fill: sapphire)[readable] \ #text(size: 5.4pt, fill: mute)[media queries · system colors]]
-
-// browser paints over the page (invisible to scripts)
-#flow(X.at(1) + hw + 2mm, X.at(2) - hw - 2mm, GY + 3.6mm, 1, amber)
-#centered(m, GY + 5.6mm, 36mm)[#text(size: 5.4pt, fill: mute)[auto-dark · extensions · filters] \ #caps(size: 4.6pt, fill: amber)[painted over]]
-
-// ── labels ───────────────────────────────────────────────────────────────
-#let label(x, name, sub, body) = centered(x, GY + R + 4mm, 48mm)[
+// ── the page ─────────────────────────────────────────────────────────────
+#at(140mm, 25mm, rect(width: 34mm, height: 31mm, radius: 1.4mm,
+  fill: white.transparentize(94%), stroke: 0.7pt + fg.transparentize(30%), inset: 3mm)[
   #set par(leading: 0.55em)
-  #text(size: 11pt, weight: 700)[#name] \
-  #caps(size: 4.6pt)[#sub]
+  #caps(size: 4.6pt)[03 · page] \
+  #text(size: 10.5pt, weight: 500)[Page] \
+  #text(size: 5.4pt, fill: mute)[what this checker reads]
   #v(1mm)
-  #text(size: 6.4pt, fill: mute)[#body]
+  #text(size: 6pt)[Sees only what the browser exposes. A repainted page still reports its own colors.]
+])
+
+// ── the system ───────────────────────────────────────────────────────────
+#at(10mm, 30mm, block(width: 27mm)[
+  #set par(leading: 0.55em)
+  #caps(size: 4.6pt)[01 · source] \
+  #text(size: 10.5pt, weight: 500)[System] \
+  #text(size: 5.4pt, fill: mute)[OS appearance setting]
+  #v(1mm)
+  #text(size: 6pt)[Light or dark, or switched by time of day.]
+])
+
+// ── labels on the light ──────────────────────────────────────────────────
+#centered(61mm, 33.4mm, 34mm, caps(size: 4.4pt, fill: fg)[preference])
+#centered(118mm, 16.5mm, 46mm)[#caps(size: 4.6pt, fill: rgb("#ffe14d"))[readable] \ #text(size: 5.4pt, fill: mute)[color scheme · contrast · forced colors · inversion \ transparency · motion · system colors]]
+
+#centered(92mm, 58.4mm, 52mm)[
+  #set par(leading: 0.55em)
+  #caps(size: 4.6pt)[02 · prism] \
+  #text(size: 10.5pt, weight: 500, fill: glass)[Browser] \
+  #text(size: 5.6pt, fill: mute)[passes the system choice on, or replaces it with its own theme setting]
 ]
-#label(X.at(0), "System", "os appearance setting")[Light, dark or automatic by time of day. Contrast themes and color inversion live here too.]
-#label(X.at(1), "Browser", "may override")[Passes the system choice on, or replaces it with its own theme or website-appearance setting.]
-#label(X.at(2), "Page", "what this checker reads")[Sees only what the browser exposes. A painted-over page still reports its own colors.]
+
+// ── painted-over path: invisible to scripts ──────────────────────────────
+#let paint = (paint: amber.transparentize(15%), thickness: 0.6pt, dash: (2pt, 2pt))
+#seg((40mm, 76mm), (157mm, 76mm), paint)
+#seg((157mm, 76mm), (157mm, 58.6mm), paint)
+#at(0mm, 0mm, polygon(fill: amber, stroke: none, (157mm, 56.8mm), (156mm, 59mm), (158mm, 59mm)))
+#at(40mm - 1.6mm, 76mm - 1.6mm, rotate(45deg, rect(width: 3.2mm, height: 3.2mm, fill: night, stroke: 0.7pt + amber)))
+#centered(98mm, 79.6mm, 110mm, text(size: 5.6pt, fill: mute)[
+  #caps(size: 4.6pt, fill: amber)[painted over] #h(1.6mm) auto-dark · extensions · filters repaint the page without telling it])
 
 // ── heading + footer ─────────────────────────────────────────────────────
-#at(10mm, 9mm, caps(fill: sapphire)[Figure 1 · signal path])
-#at(10mm, 14mm, text(size: 16pt, weight: 300)[Where a web page learns #text(weight: 700)[light or dark]])
-
-#at(10mm, 90mm, block(width: W - 20mm, align(center, text(size: 6.2pt, fill: mute)[
-  #text(weight: 700, fill: navy)[Why it matters:] the blue path can be measured from a script; the amber path can only be seen, which is why the checker includes a visual self-test.])))
+#at(10mm, 9mm, caps[Figure 1 · signal path])
+#at(10mm, 14mm, text(size: 15pt)[Where a page learns #text(fill: mute)[light or dark]])
+#at(10mm, 87mm, text(size: 5.8pt, fill: mute)[The spectrum can be measured from a script. The dashed path can only be seen, which is why the checker includes a visual self-test.])
