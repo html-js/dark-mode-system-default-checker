@@ -1,0 +1,6 @@
+.personal/
+node_modules/
+*-references/
+.ignore
+/.git.prod/
+_site/

@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="auto">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dark Mode System Default Checker</title>
+<meta name="description" content="Check whether your browser and operating system ask websites for light or dark mode. Live prefers-color-scheme test, forced colors, contrast, inverted colors, CSS system colors and an auto dark mode self-test. Runs locally, sends nothing.">
+<style>
+/* ---------- theme ---------- */
+/* "auto" follows prefers-color-scheme; light/dark pin it. color-scheme is kept in sync
+   so UA widgets (scrollbars, form controls) match the page. */
+:root{
+  --bg:#f4f6fa; --panel:#ffffff; --panel2:#eef1f6; --fg:#12151b; --muted:#5d6779;
+  --line:#d7dde7; --accent:#0d7fc4; --accent-dim:#bfe2f7; --warn:#a86400; --bad:#c62c2c; --good:#1d8a4a;
+  --mono:ui-monospace,monospace;
+  --ui:system-ui,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --panel:#161a21; --panel2:#1c212a; --fg:#e6e9ef; --muted:#8b94a7;
+    --line:#2a313d; --accent:#4cc2ff; --accent-dim:#1d4f6b; --warn:#ffb454; --bad:#ff6b6b; --good:#4fd18b;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --panel:#161a21; --panel2:#1c212a; --fg:#e6e9ef; --muted:#8b94a7;
+  --line:#2a313d; --accent:#4cc2ff; --accent-dim:#1d4f6b; --warn:#ffb454; --bad:#ff6b6b; --good:#4fd18b;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0; background:var(--bg); color:var(--fg); font:13px/1.45 var(--ui)}
+button{
+  font:inherit; background:var(--panel2); border:1px solid var(--line); color:var(--fg);
+  border-radius:6px; padding:4px 9px; cursor:pointer;
+}
+button:hover{border-color:var(--accent); color:var(--accent)}
+button:active{transform:translateY(1px)}
+code,.mono{font-family:var(--mono)}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--line); border-radius:6px}
+::-webkit-scrollbar-track{background:transparent}
+
+/* ---------- chrome ---------- */
+header{
+  position:sticky; top:0; z-index:10;
+  display:flex; align-items:center; gap:10px; padding:6px 12px;
+  background:var(--panel); border-bottom:1px solid var(--line);
+}
+header h1{font-size:13px; margin:0; letter-spacing:.4px; font-weight:600; flex:0 0 auto}
+header h1 small{color:var(--muted); font-weight:400; margin-left:6px}
+.chips{display:flex; align-items:center; gap:6px; flex:1 1 auto; min-width:0; flex-wrap:wrap; justify-content:flex-end}
+.ctls{display:flex; align-items:center; gap:6px; flex:0 0 auto}
+.chip{
+  font-family:var(--mono); font-size:10.5px; background:var(--panel2); border:1px solid var(--line);
+  border-radius:5px; padding:2px 6px; white-space:nowrap;
+}
+.chip b{color:var(--accent); font-weight:600}
+.chip i{color:var(--muted); font-style:normal}
+@media (max-width:1000px){ header h1 small{display:none} }
+@media (max-width:760px){ #chip-engine,#chip-contrast{display:none} }
+@media (max-width:560px){ .chips{display:none} }
+
+main{max-width:1180px; margin:0 auto; padding:14px 16px 40px; display:grid; gap:14px;
+  grid-template-columns:repeat(auto-fit, minmax(min(100%, 520px), 1fr))}
+.card{background:var(--panel); border:1px solid var(--line); border-radius:8px; min-width:0; overflow:hidden}
+.card.full{grid-column:1 / -1}
+.card > h2{
+  margin:0; padding:7px 10px; font-size:10.5px; text-transform:uppercase; letter-spacing:.9px;
+  color:var(--muted); font-weight:600; border-bottom:1px solid var(--line); background:var(--panel2);
+  display:flex; align-items:center; gap:8px;
+}
+.card > h2 .r{margin-left:auto; text-transform:none; letter-spacing:0; font-weight:400}
+.body{padding:10px}
+.hint{color:var(--muted); font-size:11.5px; margin:6px 0 0; overflow-wrap:anywhere}
+.hint:first-child{margin-top:0}
+
+/* ---------- verdict ---------- */
+.verdict{display:flex; gap:16px; align-items:center; flex-wrap:wrap; padding:14px}
+.orb{
+  width:74px; height:74px; border-radius:50%; flex:0 0 auto; border:1px solid var(--line);
+  display:grid; place-items:center; font-size:30px;
+}
+.orb.dark{background:#0b0d12; color:#e9ecf3}
+.orb.light{background:#fdfdfd; color:#15171c}
+.verdict .big{font-size:26px; font-weight:700; letter-spacing:.5px}
+.verdict .sub{color:var(--muted); font-size:12px; margin-top:2px}
+.flags{display:flex; gap:6px; flex-wrap:wrap; margin-top:8px}
+.flag{font-family:var(--mono); font-size:10.5px; border:1px solid var(--line); border-radius:10px; padding:1px 8px; color:var(--muted)}
+.flag.on{border-color:var(--warn); color:var(--warn)}
+.flag.ok{border-color:var(--good); color:var(--good)}
+
+/* ---------- tables ---------- */
+.tw{overflow-x:auto}
+table{border-collapse:collapse; width:100%; font-size:12px}
+th{
+  text-align:left; color:var(--muted); font-weight:500; font-size:10.5px; text-transform:uppercase; letter-spacing:.6px;
+  padding:5px 8px; border-bottom:1px solid var(--line); background:var(--panel2); white-space:nowrap;
+}
+td{padding:5px 8px; border-bottom:1px solid var(--line); vertical-align:top}
+tr:last-child td{border-bottom:none}
+td.k{font-family:var(--mono); font-size:11.5px; white-space:nowrap}
+td.v{font-family:var(--mono); font-size:11.5px}
+td.n{color:var(--muted); font-size:11.5px; min-width:180px}
+.lvl{font-family:var(--mono); font-size:10px; color:var(--muted); white-space:nowrap}
+.val{display:inline-block; font-family:var(--mono); font-size:11px; border:1px solid var(--line);
+  border-radius:4px; padding:0 6px; margin:1px 3px 1px 0; color:var(--muted)}
+.val.m{border-color:var(--accent); background:var(--accent-dim); color:var(--fg); font-weight:600}
+.val.x{text-decoration:line-through; opacity:.55}
+.b-ok{color:var(--good)} .b-warn{color:var(--warn)} .b-bad{color:var(--bad)} .b-mut{color:var(--muted)}
+tr.flash td{animation:flash 1.2s ease}
+@keyframes flash{from{background:var(--accent-dim)} to{background:transparent}}
+
+/* ---------- system colors ---------- */
+.sc td{white-space:nowrap}
+.sw{display:inline-block; width:14px; height:14px; border-radius:3px; border:1px solid rgba(127,127,127,.5); vertical-align:-3px; margin-right:6px}
+.sc td.c{font-family:var(--mono); font-size:10.5px; color:var(--muted)}
+
+/* ---------- forced-dark self test ---------- */
+.ft{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+.ft figure{margin:0}
+.ft iframe{width:100%; height:78px; border:1px solid var(--line); border-radius:6px; display:block; background:transparent}
+.ft figcaption{font-family:var(--mono); font-size:10.5px; color:var(--muted); margin-top:4px}
+
+/* ---------- log ---------- */
+#log{font-family:var(--mono); font-size:11px; max-height:220px; overflow:auto; margin:0; padding:8px 10px; white-space:pre-wrap}
+#log .t{color:var(--muted)}
+#log:empty::before{content:"waiting for changes — switch your OS / browser theme to see events here"; color:var(--muted)}
+
+details{border-top:1px solid var(--line)}
+details summary{cursor:pointer; padding:7px 10px; color:var(--muted); font-size:12px}
+details .body{padding-top:0}
+details ul{margin:0; padding-left:18px; color:var(--muted); font-size:12px}
+details li{margin:4px 0}
+
+#probe{position:absolute; left:-9999px; top:0; width:1px; height:1px; overflow:hidden}
+#toast{
+  position:fixed; left:50%; bottom:22px; transform:translateX(-50%) translateY(14px);
+  background:var(--panel2); border:1px solid var(--accent); color:var(--fg);
+  padding:6px 12px; border-radius:20px; font-size:12px; opacity:0; pointer-events:none;
+  transition:opacity .16s, transform .16s; z-index:50;
+}
+#toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>dark-mode-system-default-checker <small>what each layer reports for light / dark</small></h1>
+  <div class="chips">
+    <div class="chip" id="chip-scheme"><i>scheme</i> <b>—</b></div>
+    <div class="chip" id="chip-contrast"><i>contrast</i> <b>—</b></div>
+    <div class="chip" id="chip-forced"><i>forced</i> <b>—</b></div>
+    <div class="chip" id="chip-engine"><i>browser</i> <b>—</b></div>
+  </div>
+  <div class="ctls">
+    <button id="btn-copy" title="Copy full report as JSON">⧉ JSON</button>
+    <button id="btn-theme" title="Page theme: auto → light → dark">◐ auto</button>
+  </div>
+</header>
+
+<main>
+  <section class="card full">
+    <div class="verdict">
+      <div class="orb" id="orb">?</div>
+      <div>
+        <div class="big" id="v-big">—</div>
+        <div class="sub" id="v-sub">—</div>
+        <div class="flags" id="v-flags"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card full">
+    <h2>Layers <span class="r lvl">top = closest to the hardware, bottom = this page</span></h2>
+    <div class="tw"><table id="layers">
+      <thead><tr><th>Level</th><th>Signal</th><th>Value</th><th>Notes</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+  </section>
+
+  <section class="card">
+    <h2>Media features <span class="r lvl">live · struck = value not recognised</span></h2>
+    <div class="tw"><table id="mq">
+      <thead><tr><th>Feature</th><th>Values</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+  </section>
+
+  <section class="card">
+    <h2>Forced dark self-test <span class="r lvl">visual</span></h2>
+    <div class="body">
+      <div class="ft">
+        <figure><iframe id="ft-a" title="no color-scheme declared"></iframe><figcaption>A · no color-scheme</figcaption></figure>
+        <figure><iframe id="ft-b" title="only light"></iframe><figcaption>B · color-scheme: only light</figcaption></figure>
+      </div>
+      <p class="hint">Both frames paint a plain white box. If <b>A looks dark but B stays white</b>, the browser is
+        force-darkening pages (several browsers ship an automatic dark mode for web content, often behind a settings flag). If both are dark,
+        an extension or an OS color filter / inversion is likely at work. Scripts can’t read these pixels — trust your eyes.</p>
+    </div>
+  </section>
+
+  <section class="card full">
+    <h2>CSS system colors <span class="r lvl">resolved per color-scheme · last column = what the UA actually uses</span></h2>
+    <div class="tw"><table class="sc" id="sc">
+      <thead><tr><th>Keyword</th><th>normal</th><th>light</th><th>dark</th><th>light dark</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+  </section>
+
+  <section class="card full">
+    <h2>Change log <span class="r"><button id="btn-clear">clear</button></span></h2>
+    <pre id="log"></pre>
+    <details>
+      <summary>What can / can’t be detected</summary>
+      <div class="body"><ul>
+        <li><b>OS vs browser can’t be separated.</b> <code>prefers-color-scheme</code> is whatever the browser decides to expose:
+          it passes the OS setting through unless the browser overrides it (many browsers have their own appearance or
+          website-theme setting; some only follow the system).</li>
+        <li>The <b>UA rendering</b> row resolves the <code>Canvas</code> system color under <code>color-scheme: light dark</code> —
+          an independent read of which palette the browser uses for built-in widgets.</li>
+        <li>Privacy modes lie on purpose: anti-fingerprinting settings and privacy-hardened browsers may always report <code>light</code>.</li>
+        <li>Auto-dark / forced-dark modes usually don’t change computed styles, so only the visual self-test can reveal them.</li>
+        <li>Servers can get the same value via the <code>Sec-CH-Prefers-Color-Scheme</code> client hint (some engines only, opt-in with <code>Accept-CH</code>) — not visible from a static page.</li>
+        <li>OS color filters, smart or classic inversion, night light / blue-light filters and monitor settings sit below the browser and are invisible to it
+          (except where the browser supports <code>inverted-colors</code>).</li>
+      </ul></div>
+    </details>
+  </section>
+</main>
+
+<div id="probe" aria-hidden="true"></div>
+<div id="toast"></div>
+
+<script>
+"use strict";
+(function () {
+
+const $  = s => document.querySelector(s);
+const KEY = "dark-mode-system-default-checker.v1";
+
+/* =======================================================================
+   media features
+   ======================================================================= */
+const FEATURES = [
+  { f:"prefers-color-scheme",         vals:["light","dark","no-preference"], note:"no-preference was dropped from the spec" },
+  { f:"prefers-contrast",             vals:["no-preference","more","less","custom"] },
+  { f:"forced-colors",                vals:["none","active"] },
+  { f:"inverted-colors",              vals:["none","inverted"] },
+  { f:"prefers-reduced-transparency", vals:["no-preference","reduce"] },
+  { f:"prefers-reduced-motion",       vals:["no-preference","reduce"] },
+  { f:"monochrome",                   vals:[], bool:true },
+  { f:"color-gamut",                  vals:["srgb","p3","rec2020"] },
+  { f:"dynamic-range",                vals:["standard","high"] },
+  { f:"video-dynamic-range",          vals:["standard","high"] },
+  { f:"-ms-high-contrast",            vals:["none","active","black-on-white","white-on-black"], note:"legacy, vendor-prefixed" },
+];
+
+// matchMedia normalises an unparseable query to "not all"
+const mqOk = q => { try { return matchMedia(q).media !== "not all"; } catch (e) { return false; } };
+const mq   = q => { try { return matchMedia(q).matches; } catch (e) { return false; } };
+
+function readFeature(F) {
+  const supported = mqOk(`(${F.f})`) || F.vals.some(v => mqOk(`(${F.f}: ${v})`));
+  if (F.bool) return { supported, matched: supported ? [mq(`(${F.f})`) ? "yes" : "no"] : [], vals: [] };
+  const vals = F.vals.map(v => ({ v, ok: mqOk(`(${F.f}: ${v})`), m: mq(`(${F.f}: ${v})`) }));
+  return { supported, vals, matched: vals.filter(x => x.m).map(x => x.v) };
+}
+
+function renderMQ(flash) {
+  const tb = $("#mq tbody");
+  tb.innerHTML = "";
+  for (const F of FEATURES) {
+    const r = readFeature(F);
+    const tr = document.createElement("tr");
+    if (flash && flash.includes(F.f)) tr.className = "flash";
+    let vals;
+    if (!r.supported) vals = `<span class="b-mut">not supported</span>`;
+    else if (F.bool) vals = `<span class="val ${r.matched[0] === "yes" ? "m" : ""}">${r.matched[0]}</span>`;
+    else vals = r.vals.map(x => `<span class="val ${x.m ? "m" : ""} ${x.ok ? "" : "x"}">${x.v}</span>`).join("");
+    tr.innerHTML = `<td class="k">${F.f}${F.note ? `<div class="lvl">${F.note}</div>` : ""}</td><td>${vals}</td>`;
+    tb.appendChild(tr);
+  }
+}
+
+/* =======================================================================
+   system colors
+   ======================================================================= */
+const SYS = ["Canvas","CanvasText","LinkText","VisitedText","ActiveText","ButtonFace","ButtonText","ButtonBorder",
+  "Field","FieldText","Highlight","HighlightText","SelectedItem","SelectedItemText","Mark","MarkText","GrayText",
+  "AccentColor","AccentColorText"];
+const SCHEMES = ["normal","light","dark","light dark"];
+
+function resolveColor(kw, scheme) {
+  const el = document.createElement("span");
+  el.style.cssText = `color-scheme:${scheme}; color:${kw}`;
+  $("#probe").appendChild(el);
+  const c = getComputedStyle(el).color;
+  el.remove();
+  return c;
+}
+
+function parseRGB(s) {
+  const m = s && s.match(/[\d.]+/g);
+  return m ? m.slice(0, 3).map(Number) : null;
+}
+function luminance(s) {
+  const c = parseRGB(s);
+  if (!c) return NaN;
+  const [r, g, b] = c.map(v => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); });
+  return .2126 * r + .7152 * g + .0722 * b;
+}
+const toneOf = s => { const L = luminance(s); return isNaN(L) ? "?" : L < .2 ? "dark" : "light"; };
+
+function readSystemColors() {
+  const out = {};
+  for (const kw of SYS) {
+    if (!(window.CSS && CSS.supports && CSS.supports("color", kw))) { out[kw] = null; continue; }
+    out[kw] = {};
+    for (const s of SCHEMES) out[kw][s] = resolveColor(kw, s);
+  }
+  return out;
+}
+
+function renderSC(sc) {
+  const tb = $("#sc tbody");
+  tb.innerHTML = "";
+  for (const kw of SYS) {
+    const row = sc[kw];
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td class="k">${kw}</td>` + (row
+      ? SCHEMES.map(s => `<td class="c"><span class="sw" style="background:${row[s]}"></span>${row[s]}</td>`).join("")
+      : `<td class="c" colspan="4">not supported</td>`);
+    tb.appendChild(tr);
+  }
+}
+
+/* =======================================================================
+   environment
+   ======================================================================= */
+function engine() {
+  const ua = navigator.userAgent;
+  const brands = (navigator.userAgentData && navigator.userAgentData.brands || [])
+    .map(b => b.brand).filter(b => !/not.?a.?brand/i.test(b));
+  // shown as the browser reports itself (brand list, else the last UA product token); no names are hard-coded here
+  const tok = ua.match(/(\S+)\/[\d.]+\s*$/);
+  const name = brands.join(" / ") || (tok ? tok[1] : "unknown");
+  const platform = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || "?";
+  return { name, brands, platform, ua };
+}
+
+function extensions() {
+  const html = document.documentElement, body = document.body;
+  const hits = [];
+  if (html.hasAttribute("data-darkreader-mode") || html.hasAttribute("data-darkreader-scheme")
+    || document.querySelector('meta[name="darkreader"], style.darkreader')) hits.push("dark-theme extension (data attributes)");
+  if (html.hasAttribute("nighteye")) hits.push("dark-theme extension (root attribute)");
+  const f = [getComputedStyle(html).filter, getComputedStyle(body).filter].filter(x => x && x !== "none");
+  if (f.length) hits.push("filter on html/body: " + f.join(" | "));
+  // our own tokens say what body should be painted; anything else means someone restyled us
+  const want = getComputedStyle(html).getPropertyValue("--bg").trim();
+  const probe = document.createElement("span");
+  probe.style.color = want;
+  $("#probe").appendChild(probe);
+  const wantRGB = getComputedStyle(probe).color;
+  probe.remove();
+  const got = getComputedStyle(body).backgroundColor;
+  if (parseRGB(wantRGB) + "" !== parseRGB(got) + "") hits.push(`body bg overridden (${got} ≠ ${wantRGB})`);
+  return hits;
+}
+
+function pageLevel() {
+  const meta = document.querySelector('meta[name="color-scheme"]');
+  return {
+    meta: meta ? meta.content : null,
+    rootColorScheme: getComputedStyle(document.documentElement).colorScheme || "(unsupported)",
+    pageTheme: cfg.theme,
+    lightDarkFn: !!(window.CSS && CSS.supports && CSS.supports("color", "light-dark(#000, #fff)")),
+  };
+}
+
+/* =======================================================================
+   report
+   ======================================================================= */
+function collect() {
+  const features = {};
+  for (const F of FEATURES) features[F.f] = readFeature(F);
+  const sc = readSystemColors();
+  const pcs = features["prefers-color-scheme"];
+  const scheme = !pcs.supported ? "unsupported" : pcs.matched[0] || "none";
+  const uaCanvas = sc.Canvas ? sc.Canvas["light dark"] : null;
+  return {
+    at: new Date().toISOString(),
+    scheme,
+    uaScheme: uaCanvas ? toneOf(uaCanvas) : "?",
+    uaCanvas,
+    features, systemColors: sc,
+    extensions: extensions(),
+    page: pageLevel(),
+    env: engine(),
+  };
+}
+
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]));
+const badge = (txt, cls) => `<span class="${cls}">${esc(txt)}</span>`;
+
+function renderLayers(R) {
+  const F = R.features;
+  const m = k => F[k] && F[k].supported ? (F[k].matched[0] || "none") : "unsupported";
+  const rows = [
+    ["OS", "system appearance",
+      badge(R.scheme === "dark" || R.scheme === "light" ? "likely " + R.scheme : "unknown", "b-mut"),
+      "Not readable directly — only what the browser forwards (next row). If the browser has its own theme override, this may differ."],
+    ["Browser", "prefers-color-scheme",
+      badge(R.scheme, R.scheme === "dark" || R.scheme === "light" ? "b-ok" : "b-bad"),
+      "The preference exposed to web content. OS setting, unless the browser/profile overrides it."],
+    ["Browser", "UA widget palette",
+      `${badge(R.uaScheme, "b-ok")} <span class="lvl">Canvas = ${esc(R.uaCanvas || "?")}</span>`,
+      "Canvas system color under color-scheme: light dark. Should agree with the row above; a mismatch hints at a buggy / partial override."],
+    ["Accessibility", "forced-colors",
+      badge(m("forced-colors"), m("forced-colors") === "active" ? "b-warn" : "b-ok"),
+      "OS contrast themes / high-contrast modes. When active the UA replaces page colors with the system palette."],
+    ["Accessibility", "prefers-contrast",
+      badge(m("prefers-contrast"), /more|less|custom/.test(m("prefers-contrast")) ? "b-warn" : "b-ok"),
+      "System “increase contrast” settings and custom contrast themes on desktop and mobile."],
+    ["Accessibility", "inverted-colors",
+      badge(m("inverted-colors"), m("inverted-colors") === "inverted" ? "b-warn" : "b-ok"),
+      "OS-level color inversion (only some browsers report this)."],
+    ["Browser add-ons", "extensions / filters",
+      R.extensions.length ? badge(R.extensions.join("; "), "b-warn") : badge("none detected", "b-ok"),
+      "Dark-theme extensions, CSS filter inversion, or anything restyling this page’s background."],
+    ["Browser", "forced dark (auto-dark)",
+      badge("see visual self-test", "b-mut"),
+      "Browser auto-darkening paints over pages without changing computed styles."],
+    ["Page", "<meta name=color-scheme>",
+      badge(R.page.meta === null ? "(not declared)" : R.page.meta, "b-mut"),
+      "This checker intentionally declares none so it doesn’t influence the probes."],
+    ["Page", "root color-scheme (computed)",
+      badge(R.page.rootColorScheme, "b-mut"),
+      `This page’s theme is “${R.page.pageTheme}”. light-dark() support: ${R.page.lightDarkFn ? "yes" : "no"}.`],
+    ["Environment", "browser / platform (self-reported)",
+      badge(`${R.env.name} · ${R.env.platform}`, "b-mut"),
+      esc(R.env.ua)],
+  ];
+  $("#layers tbody").innerHTML = rows.map(r =>
+    `<tr><td class="lvl">${r[0]}</td><td class="k">${esc(r[1])}</td><td class="v">${r[2]}</td><td class="n">${r[3]}</td></tr>`
+  ).join("");
+}
+
+function renderVerdict(R) {
+  const s = R.scheme;
+  const orb = $("#orb");
+  orb.className = "orb " + (s === "dark" ? "dark" : s === "light" ? "light" : "");
+  orb.textContent = s === "dark" ? "☾" : s === "light" ? "☀" : "?";
+  $("#v-big").textContent = s === "dark" ? "DARK" : s === "light" ? "LIGHT" : s.toUpperCase();
+  $("#v-sub").textContent = s === "unsupported"
+    ? "This browser doesn’t support prefers-color-scheme."
+    : `Your browser asks websites for ${s} mode.` + (R.uaScheme !== s && R.uaScheme !== "?" ? ` Its built-in widgets render ${R.uaScheme} though.` : "");
+  const F = R.features;
+  const on = (k, v) => F[k].supported && F[k].matched.includes(v);
+  const flags = [
+    ["forced-colors", on("forced-colors", "active")],
+    ["high contrast", on("prefers-contrast", "more") || on("prefers-contrast", "custom")],
+    ["inverted", on("inverted-colors", "inverted")],
+    ["reduced transparency", on("prefers-reduced-transparency", "reduce")],
+    ["extension", R.extensions.length > 0],
+  ];
+  $("#v-flags").innerHTML = flags.map(([t, v]) => `<span class="flag ${v ? "on" : "ok"}">${v ? "●" : "○"} ${t}</span>`).join("");
+
+  $("#chip-scheme b").textContent = s;
+  $("#chip-contrast b").textContent = F["prefers-contrast"].supported ? (F["prefers-contrast"].matched[0] || "—") : "n/a";
+  $("#chip-forced b").textContent = F["forced-colors"].supported ? (F["forced-colors"].matched[0] || "—") : "n/a";
+  $("#chip-engine b").textContent = R.env.name;
+}
+
+let last = null;
+function refresh(flash) {
+  last = collect();
+  renderVerdict(last);
+  renderLayers(last);
+  renderMQ(flash);
+  renderSC(last.systemColors);
+}
+
+/* =======================================================================
+   forced-dark test frames
+   ======================================================================= */
+function frameDoc(scheme) {
+  return `<!doctype html><html><head>${scheme ? `<meta name="color-scheme" content="${scheme}">` : ""}
+<style>html,body{margin:0;height:100%;background:#fff;color:#000;font:12px system-ui,sans-serif}
+body{display:grid;place-items:center}</style></head><body>#fff background · #000 text</body></html>`;
+}
+$("#ft-a").srcdoc = frameDoc(null);
+$("#ft-b").srcdoc = frameDoc("only light");
+
+/* =======================================================================
+   live changes
+   ======================================================================= */
+function log(msg) {
+  const el = $("#log");
+  const t = new Date().toLocaleTimeString();
+  el.insertAdjacentHTML("afterbegin", `<span class="t">${t}</span>  ${esc(msg)}\n`);
+}
+
+for (const F of FEATURES) {
+  const qs = F.bool ? [`(${F.f})`] : F.vals.map(v => `(${F.f}: ${v})`);
+  for (const q of qs) {
+    if (!mqOk(q)) continue;
+    const mql = matchMedia(q);
+    const on = () => {
+      if (!mql.matches) return;          // log only the value we moved *to*
+      log(`${F.f} → ${F.bool ? "yes" : q.slice(F.f.length + 3, -1)}`);
+      refresh([F.f]);
+    };
+    if (mql.addEventListener) mql.addEventListener("change", on); else mql.addListener(on);
+  }
+}
+
+// extensions tend to inject after load
+const restyled = new MutationObserver(() => {
+  const now = extensions().join("; ");
+  if (last && now !== last.extensions.join("; ")) { log("page restyled: " + (now || "override removed")); refresh(); }
+});
+restyled.observe(document.documentElement, { attributes: true, childList: true });
+restyled.observe(document.head, { childList: true });
+
+/* =======================================================================
+   page theme + actions
+   ======================================================================= */
+const cfg = { theme: "auto" };
+try { Object.assign(cfg, JSON.parse(localStorage.getItem(KEY)) || {}); } catch (e) {}
+
+function applyTheme() {
+  document.documentElement.dataset.theme = cfg.theme;
+  $("#btn-theme").textContent = "◐ " + cfg.theme;
+}
+$("#btn-theme").addEventListener("click", () => {
+  cfg.theme = { auto: "light", light: "dark", dark: "auto" }[cfg.theme] || "auto";
+  applyTheme();
+  try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch (e) {}
+  refresh();
+});
+
+let toastT;
+function toast(msg) {
+  const t = $("#toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 1400);
+}
+$("#btn-copy").addEventListener("click", async () => {
+  const txt = JSON.stringify(collect(), null, 2);
+  try { await navigator.clipboard.writeText(txt); toast("report copied"); }
+  catch (e) { console.log(txt); toast("clipboard blocked — report logged to console"); }
+});
+$("#btn-clear").addEventListener("click", () => { $("#log").textContent = ""; });
+
+applyTheme();
+refresh();
+
+})();
+</script>
+</body>
+</html>

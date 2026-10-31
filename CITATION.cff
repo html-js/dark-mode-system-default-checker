@@ -1,0 +1,30 @@
+cff-version: 1.2.0
+title: Dark Mode System Default Checker
+message: "If you use this software, please cite it using the metadata from this file."
+type: software
+authors:
+  - alias: Aesthetic Vulpes
+    website: https://github.com/didvc/
+repository-code: https://github.com/html-js/dark-mode-system-default-checker
+url: https://html-js.github.io/dark-mode-system-default-checker/
+license: AGPL-3.0
+version: 0.1.0
+date-released: 2026-10-31
+abstract: >
+  A single-page, zero-dependency browser tool that reports whether the
+  browser asks websites for a light or dark color scheme and which layer
+  decided it. It reads prefers-color-scheme and related media features live,
+  resolves CSS system colors per color-scheme, flags forced colors, contrast
+  and inversion settings, detects page restyling by add-ons, and offers a
+  visual self-test for automatic force-dark modes. Everything runs locally.
+keywords:
+  - dark-mode
+  - light-mode
+  - prefers-color-scheme
+  - color-scheme
+  - forced-colors
+  - prefers-contrast
+  - system-colors
+  - auto-dark-mode
+  - accessibility
+  - web-development

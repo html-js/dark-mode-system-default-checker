@@ -1,0 +1,29 @@
+name: Wrong or confusing result
+description: The checker reported something that does not match your setup.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: >
+        Before pasting a JSON report, remove anything you prefer to keep private.
+        The report contains your browser's user-agent string and platform name.
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+      description: Your system and browser appearance settings, and what you expected the page to show.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What the checker showed
+      description: The verdict, the row that looks wrong, and what the two self-test frames looked like.
+    validations:
+      required: true
+  - type: textarea
+    id: report
+    attributes:
+      label: JSON report (optional)
+      description: From the "JSON" button in the header, edited as you see fit.
+      render: json
